@@ -19,7 +19,7 @@ parser.add_argument('-rabbit_host', default='amqp://ambar')
 parser.add_argument('-rabbit_heartbeat', default=0)
 parser.add_argument('-api_call_timeout_seconds', default=1200)
 parser.add_argument('-name', default='c0')
-parser.add_argument('-api_token', default='7dbb2df98cba58b38a96a78de3c07444c461abdd8656a58e52ce6f444488304d72ef028e19150dd8b156c88908557abe5f0e0db669c02d6be4046842ab1d6b8b0a4054ed77d24c1ce727ebfa6ba0876927d2946b7612dd06c1798179f18f0735ae736943b5a29802f28b6f97c2bfe8d4884456cd8b404a2d6caf5b74ca10648f25e74cd1fd6cb153096a7a716555d1161070bca542b0621f6f4aa7f7a501fab83b4a5667a25d1766cfb4137f82cc9fa65bf9db776a0f4f0379624efdb00c476aefada20da8b44e79a2df19a390aff8766b4e0586518da7cbe882f39cc58acf4cf4b2245748b274abdc71c33472f71ce4224da1ec5b7457873b6a84eac76e3b83')
+parser.add_argument('-api_token', default='')
 
 args = parser.parse_args()
 
