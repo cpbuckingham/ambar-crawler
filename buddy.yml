@@ -1,0 +1,8 @@
+- pipeline: "Deploy to Github"
+  trigger_mode: "MANUAL"
+  ref_name: "master"
+  actions:
+  - action: "Push to git@github.com:RD17/ambar-crawler.git"
+    type: "PUSH"
+    git_auth_mode: "PUBLIC_BUDDY_KEY"
+    push_url: "git@github.com:RD17/ambar-crawler.git"
