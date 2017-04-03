@@ -22,9 +22,10 @@ class SmbProxy(object):
         self.connected = ''
         self.settings  = None
         self.logger    = None
+        self.callTimeout = 120
 
     @classmethod
-    def Init(cls, Location, Share, CrawlerSettings, Logger, port=139):
+    def Init(cls, Location, Share, CrawlerSettings, Logger, Port=139, CallTimeout=120):
         smbProxy = cls()
         domain, username = CrawlerSettings.credentials.login.split('\\') if CrawlerSettings.credentials.login.count('\\') == 1 else ('', CrawlerSettings.credentials.login)
         ## initializing settings and logger
@@ -38,9 +39,10 @@ class SmbProxy(object):
         smbProxy.server    = str(Location.host_name)
         smbProxy.server_ip = str(Location.ip_address)
         smbProxy.share     = str(Share)
-        smbProxy.port      = port
+        smbProxy.port      = Port
         smbProxy.conn      = None
-        smbProxy.connected = False                
+        smbProxy.connected = False     
+        smbProxy.callTimeout = CallTimeout           
         return smbProxy
 
     def Connect(self):
@@ -56,7 +58,7 @@ class SmbProxy(object):
     
     def ListLocation(self, Location):
         try:
-            return self.conn.listPath(self.share, Location)
+            return self.conn.listPath(self.share, Location, timeout = self.callTimeout)
         except Exception as e:
             self.logger.LogMessage('error', str(e))
             return None
@@ -64,7 +66,7 @@ class SmbProxy(object):
     def RetrieveFile(self, Location, FileName):
         try:
             fileStream = io.BytesIO()
-            self.conn.retrieveFile(self.share, '{0}/{1}'.format(Location,FileName).replace('//','/'), fileStream)
+            self.conn.retrieveFile(self.share, '{0}/{1}'.format(Location,FileName).replace('//','/'), fileStream, timeout = self.callTimeout)
             return fileStream
         except Exception as e:
             self.logger.LogMessage('info', 'could not open file {0}/{1}, message: {2}'.format(Location,FileName,e))
