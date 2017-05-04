@@ -19,7 +19,7 @@ class SmbProxy(object):
         self.share     = ''
         self.port      = ''
         self.conn      = ''
-        self.connected = ''
+        self.connected = False
         self.settings  = None
         self.logger    = None
         self.callTimeout = 120
