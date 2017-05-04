@@ -2,6 +2,7 @@ from apiproxy import ApiProxy
 from model import AmbarCrawlerSettings
 from smbcrawler import SmbCrawler
 from dropboxcrawler import DropboxCrawler
+from ftpcrawler import FtpCrawler
 from logger import AmbarLogger
 import json
 import signal
@@ -59,7 +60,7 @@ def PerformTask(CrawlerUid):
         return False
 
     ## checking crawler type
-    if not (ambarCrawlerSettings.type == 'smb' or ambarCrawlerSettings.type == 'dropbox'):
+    if not (ambarCrawlerSettings.type == 'smb' or ambarCrawlerSettings.type == 'dropbox' or ambarCrawlerSettings.type == 'ftp'):
         coreLogger.LogMessage('error', 'unknown crawler type {0}'.format(ambarCrawlerSettings.type))
         return False
     
@@ -89,6 +90,8 @@ def PerformTask(CrawlerUid):
         crawler = SmbCrawler(apiProxy, ambarCrawlerSettings)
     if ambarCrawlerSettings.type == 'dropbox': 
         crawler = DropboxCrawler(apiProxy, ambarCrawlerSettings)
+    if ambarCrawlerSettings.type == 'ftp': 
+        crawler = FtpCrawler(apiProxy, ambarCrawlerSettings)
 
     try:
         crawler.Crawl()
