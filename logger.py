@@ -9,9 +9,12 @@ class AmbarLogger:
         self.apiProxy = ApiProxy
 
     def SendLogMessageToES(self, MessageType, Message):
-        apiResp = self.apiProxy.IndexLogRecord(AmbarLogRecord.Init(self.loggingId, MessageType, Message))
-        if not (apiResp.Ok or apiResp.Created):
-            print('{0}: [{1}] {2} {3}'.format(datetime.now(), 'error', apiResp.code, apiResp.message), file=sys.stderr)  
+        try:
+            apiResp = self.apiProxy.IndexLogRecord(AmbarLogRecord.Init(self.loggingId, MessageType, Message))
+            if not (apiResp.Ok or apiResp.Created):
+                print('{0}: [{1}] {2} {3}'.format(datetime.now(), 'error', apiResp.code, apiResp.message), file=sys.stderr)  
+        except:
+            print('{0}: [{1}] {2}'.format(datetime.now(), 'error', 'error submitting error to WebApi'), file=sys.stderr)  
 
     def LogMessage(self, MessageType, Message):
         """Writing message into stdout, stderr and ES (calling WebApi)

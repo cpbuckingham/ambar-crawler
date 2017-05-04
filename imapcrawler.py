@@ -2,77 +2,209 @@ import imaplib
 import email
 import email.generator
 import os
+import re
+import io
+from datetime import datetime
+from time import mktime
+from filecrawler import FileCrawler
+from model import AmbarCrawlerSettings, AmbarCrawlerSettingsCredentials, AmbarFileMeta
+from logger import AmbarLogger
 
-def normalizeFileName(filename):
-    return "".join([str(c) for c in filename if str(c).isalpha() or str(c).isdigit() or str(c)==' ']).rstrip()
+class ImapProxy(object):
+    def __init__(self):
+        self.connection = None     
+        self.username = ''
+        self.password = ''
+        self.email = ''
+        self.serverName = ''
+        self.serverIp = ''
+        self.isConnected = False
+        self.logger = None
 
-def decodeFileName(header):
-    result = None
+    @classmethod
+    def Init(cls, ServerName, ServerIp, UserName, Password, Email, Logger):
+        imapProxy = cls()
+        ## initializing logger
+        imapProxy.logger = Logger
+        ## initializing...
+        imapProxy.username = str(UserName)
+        imapProxy.password = str(Password)
+        imapProxy.serverName = str(ServerName)
+        imapProxy.serverIp = str(ServerIp)
+        imapProxy.isConnected = False     
+        imapProxy.email = Email
+        return imapProxy
 
-    try:
-        res = email.header.decode_header(header)
-        h,e = res[0]           
-        header = h
-        if (e == 'unknown-8bit'):
-            result = str(num)
-        elif (e != None):    
-            result = h.decode(e)
-    except:
-        print('Can not decode')
-        return result
+    def connectByServerName(self):
+        try:
+            self.connection = imaplib.IMAP4_SSL(self.serverName)
+            self.connection.login(self.username, self.password)
+            self.connection.select()
+            self.isConnected = True
+            return self.isConnected
+        except Exception as e:
+            self.logger.LogMessage('error', str(e))
+            return False
     
-    return result
+    def connectByServerIp(self):
+        try:
+            self.connection = imaplib.IMAP4_SSL(self.serverIp)
+            self.connection.login(self.username, self.password)
+            self.connection.select()
+            self.isConnected = True
+            return self.isConnected
+        except Exception as e:
+            self.logger.LogMessage('error', str(e))
+            return False
 
+    def Connect(self):
+        if self.connectByServerName():
+            return True
 
-mail = imaplib.IMAP4_SSL('imap.gmail.com')
-mail.login('', '')
+        if self.connectByServerIp():
+            return True
 
-mail.select()
+        return False
+    
+    def Disconnect(self):
+        try:
+            self.connection.close()
+            self.connection.logout()
+        except:
+            pass
 
-result, data = mail.uid('search', None, "ALL") # search and return uids instead
-latest_email_uid = data[0].split()[-1]
+    def normalizeFileName(self, fileName):
+        return "".join([str(c) for c in fileName if str(c).isalpha() or str(c).isdigit() or str(c)==' ']).rstrip()
 
-for num in data[0].split():        
-        rv, data = mail.fetch(num, '(RFC822)')
-        if rv != 'OK' and data[0] != None:
-            print("ERROR getting message", num)
-            exit()
-        raw_email = data[0][1]
-        email_message = email.message_from_bytes(raw_email)
-        
-        decodedFileName = decodeFileName(email_message.get('Subject'))
-        filename = normalizeFileName(decodedFileName if decodedFileName != None else str(num))
-        
-        print("Writing message ", filename)
-        f = open('Messages\{0}.eml'.format(filename), 'wb')
-        f.write(raw_email)
-        f.close()
+    def decodeStringFromMail(self, string):
+        try:
+            header, encoding = email.header.decode_header(string)[0]          
+            if not encoding:
+                return header
+            if encoding == 'unknown-8bit':
+                return None
 
-        if email_message.get_content_maintype() != 'multipart':
-            continue
-        idx = 0
-        for part in email_message.walk():
-            if part.get_content_maintype() == 'multipart':
-                continue
-            if part.get('Content-Disposition') is None:
-                continue
+            return header.decode(encoding)
+        except Exception as e:
+            self.logger.LogMessage('info', 'can not decode string {0}'.format(str(e)))
+            return None
 
-            print(part.get_filename())
-            partFilename = part.get_filename()
-            if partFilename is not None:
-                decodedFileName = decodeFileName(partFilename)
-                
-                sv_path = os.path.join('Messages', "{0}_{1}".format(filename, decodedFileName if decodedFileName != None else partFilename))                                 
-            if not os.path.isfile(sv_path):
-                payload = part.get_payload(decode=True)
-                if payload == None:
+    def processMessage(self, messageId, ProcessMessageCallback):
+        try:
+            callResult, data = self.connection.fetch(messageId, '(RFC822)')
+
+            if callResult != 'OK' or not data[0]:
+                raise Exception('failded to fetch')
+
+            rawEmail = data[0][1]
+            emailMessage = email.message_from_bytes(rawEmail)
+            
+            shortName = self.decodeStringFromMail(emailMessage.get('Subject'))
+            shortName = self.normalizeFileName(shortName if shortName else str(messageId))
+            shortName = '{0}.eml'.format(shortName)
+            fullName = '//{0}/{1}/{2}'.format(self.serverName, self.email, shortName).lower()
+            createUpdateTime = datetime.fromtimestamp(mktime(email.utils.parsedate(emailMessage.get('Date'))))
+
+            ProcessMessageCallback(shortName, fullName, createUpdateTime, rawEmail)
+
+            if emailMessage.get_content_maintype() != 'multipart':
+                return
+
+            for part in emailMessage.walk():
+                if part.get_content_maintype() == 'multipart':
+                    continue
+                if part.get('Content-Disposition') is None:
+                    continue
+            
+                partFilename = part.get_filename()
+
+                if not partFilename:
                     continue
 
-                print(sv_path)
-                fp = open(sv_path, 'wb')
-                fp.write(payload)
-                fp.close()
-            idx = idx + 1
+                partFilename = self.decodeStringFromMail(partFilename).lower()
 
-mail.close()
-mail.logout()
+                partData = part.get_payload(decode=True)
+                
+                if not partData:
+                    continue                
+               
+                fullPartFileName = '{0}/{1}'.format(fullName, partFilename).lower()
+
+                ProcessMessageCallback(partFilename, fullPartFileName, createUpdateTime, partData)
+
+        except Exception as e:
+            self.logger.LogMessage('error', 'error retrieving message {0} {1}'.format(messageId, str(e)))
+            return None
+
+    def ListMailBox(self, ProcessMessageCallback):
+        try:
+            callResult, rawUidList = self.connection.uid('search', None, "ALL") 
+            
+            if callResult != 'OK':
+                self.logger.LogMessage('error', 'error listing mailbox {0}'.format(callResult))
+                return
+            
+            if not rawUidList:
+                self.logger.LogMessage('error', 'error listing mailbox empty response received')
+                return
+
+            uidList = reversed(rawUidList[0].split())
+
+            for messageId in uidList:   
+                self.processMessage(messageId, ProcessMessageCallback)
+
+        except Exception as e:
+            self.logger.LogMessage('error', 'error listing mailbox {0}'.format(str(e)))
+            return None
+
+
+class ImapCrawler(FileCrawler):      
+    ## __init__() inherited from FileCrawler
+
+    ## inherited method Crawl
+    def Crawl(self):
+        """Crawling folders from AmbarCrawlerSettings recursively
+        """
+        for location in self.settings.locations:            
+            imapProxy = ImapProxy.Init(location.host_name, location.ip_address, self.settings.credentials.login, self.settings.credentials.password, location.location, self.logger)
+
+            if not imapProxy:
+                self.logger.LogMessage('error', 'error initializing ImapProxy for {0}'.format(location.host_name))
+                return
+
+            if not imapProxy.Connect():
+                self.logger.LogMessage('error', 'error connecting to Imap server on {0}'.format(location.host_name))
+                return
+
+            self.logger.LogMessage('info', 'crawling {1} at {0}'.format(location.host_name, location.location))
+
+            imapProxy.ListMailBox(self.ProcessMessageCallback)   
+            
+            imapProxy.Disconnect()
+
+        self.logger.LogMessage('info', 'done')
+    
+    def ProcessMessageCallback(self, ShortName, FullName, CreateUpdateTime, FileData):
+        if not self.regex.search(ShortName):
+            self.logger.LogMessage('verbose','ignoring {0}'.format(FullName))
+            return
+
+        if len(FileData) > self.settings.max_file_size_bytes:
+            self.logger.LogMessage('verbose','ignoring too big {0}'.format(FullName))   
+            return
+
+        if self.TurboCheckMetaExistanceCallback(CreateUpdateTime, CreateUpdateTime, ShortName, FullName):
+            self.logger.LogMessage('verbose','[TURBO] meta found {0}'.format(FullName))
+            return
+                   
+        self.ProcessFileCallback(io.BytesIO(FileData), len(FileData), CreateUpdateTime, CreateUpdateTime, ShortName, FullName)
+
+            
+
+
+
+
+
+
+
+
