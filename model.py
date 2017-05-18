@@ -130,7 +130,6 @@ class AmbarFileMeta:
         self.source_id = ''
         self.created_datetime = ''
         self.updated_datetime = ''     
-        self.indexed_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] 
         ## non serializable content
         self.initialized = False
         self.message = ''
@@ -173,7 +172,6 @@ class AmbarFileMeta:
         yield 'source_id', self.source_id
         yield 'created_datetime', self.created_datetime
         yield 'updated_datetime', self.updated_datetime
-        yield 'indexed_datetime', self.indexed_datetime
     
     @property
     def Dict(self):
