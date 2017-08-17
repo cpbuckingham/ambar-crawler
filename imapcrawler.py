@@ -94,7 +94,7 @@ class ImapProxy(object):
             callResult, data = self.connection.uid('fetch', messageId, '(BODY.PEEK[])')
 
             if callResult != 'OK' or not data[0]:
-                raise Exception('failded to fetch')
+                raise Exception('failed to fetch')
 
             rawEmail = data[0][1]
             emailMessage = email.message_from_bytes(rawEmail)
