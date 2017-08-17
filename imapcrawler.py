@@ -91,7 +91,7 @@ class ImapProxy(object):
 
     def processMessage(self, messageId, ProcessMessageCallback):
         try:
-            callResult, data = self.connection.fetch(messageId, '(RFC822)')
+            callResult, data = self.connection.uid('fetch', messageId, '(BODY.PEEK[])')
 
             if callResult != 'OK' or not data[0]:
                 raise Exception('failded to fetch')
