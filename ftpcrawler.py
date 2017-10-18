@@ -1,6 +1,7 @@
 import re
 import io
 from ftplib import FTP
+from ftplib import FTP_TLS
 from datetime import datetime
 from filecrawler import FileCrawler
 from model import AmbarCrawlerSettings, AmbarCrawlerSettingsCredentials, AmbarFileMeta
@@ -42,6 +43,7 @@ class FtpEntry(object):
 
 class FtpProxy(object):
     def __init__(self):   
+        self.connectionType = ''
         self.connection = None     
         self.username = ''
         self.password = ''
@@ -51,11 +53,12 @@ class FtpProxy(object):
         self.logger = None
 
     @classmethod
-    def Init(cls, ServerName, ServerIp, UserName, Password, Logger):
+    def Init(cls, ConnectionType, ServerName, ServerIp, UserName, Password, Logger):
         ftpProxy = cls()
         ## initializing logger
         ftpProxy.logger = Logger
         ## initializing...
+        ftpProxy.connectionType = str(ConnectionType)
         ftpProxy.username = str(UserName)
         if ftpProxy.username == '':
             ftpProxy.username = 'anonymous'
@@ -67,8 +70,15 @@ class FtpProxy(object):
 
     def connectByServerName(self):
         try:
-            self.connection = FTP(self.serverName)
+            if (self.connectionType == 'ftp'):
+                self.connection = FTP(self.serverName)
+            elif (self.connectionType == 'ftps'):
+                self.connection = FTP_TLS(self.serverName)
+            else:
+                raise Exception('Unknown connection type...')
             self.connection.login(user = self.username, passwd = self.password)
+            if (self.connectionType == 'ftps'):
+                self.connection.prot_p()
             self.isConnected = True
             return self.isConnected
         except Exception as e:
@@ -77,8 +87,15 @@ class FtpProxy(object):
     
     def connectByServerIp(self):
         try:
-            self.connection = FTP(self.serverIp)
+            if (self.connectionType == 'ftp'):
+                self.connection = FTP(self.serverIp)
+            elif (self.connectionType == 'ftps'):
+                self.connection = FTP_TLS(self.serverIp)
+            else:
+                raise Exception('Unknown connection type...')
             self.connection.login(user = self.username, passwd = self.password)
+            if (self.connectionType == 'ftps'):
+                self.connection.prot_p()
             self.isConnected = True
             return self.isConnected
         except Exception as e:
@@ -144,7 +161,7 @@ class FtpCrawler(FileCrawler):
         """
         for location in self.settings.locations:  
 
-            ftpProxy = FtpProxy.Init(location.host_name, location.ip_address, self.settings.credentials.login, self.settings.credentials.password, self.logger)
+            ftpProxy = FtpProxy.Init(self.settings.type, location.host_name, location.ip_address, self.settings.credentials.login, self.settings.credentials.password, self.logger)
 
             if not ftpProxy:
                 self.logger.LogMessage('error', 'error initializing FtpProxy for {0}'.format(location.host_name))

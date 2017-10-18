@@ -61,7 +61,7 @@ def PerformTask(CrawlerUid):
         return False
 
     ## checking crawler type
-    if not (ambarCrawlerSettings.type == 'smb' or ambarCrawlerSettings.type == 'dropbox' or ambarCrawlerSettings.type == 'ftp' or ambarCrawlerSettings.type == 'imap'):
+    if not (ambarCrawlerSettings.type == 'smb' or ambarCrawlerSettings.type == 'dropbox' or ambarCrawlerSettings.type == 'ftp' or ambarCrawlerSettings.type == 'ftps' or ambarCrawlerSettings.type == 'imap'):
         coreLogger.LogMessage('error', 'unknown crawler type {0}'.format(ambarCrawlerSettings.type))
         return False
     
@@ -89,11 +89,13 @@ def PerformTask(CrawlerUid):
     ## crawling    
     if ambarCrawlerSettings.type == 'smb':
         crawler = SmbCrawler(apiProxy, ambarCrawlerSettings)
-    if ambarCrawlerSettings.type == 'dropbox': 
+    elif ambarCrawlerSettings.type == 'dropbox': 
         crawler = DropboxCrawler(apiProxy, ambarCrawlerSettings)
-    if ambarCrawlerSettings.type == 'ftp': 
+    elif ambarCrawlerSettings.type == 'ftp': 
         crawler = FtpCrawler(apiProxy, ambarCrawlerSettings)
-    if ambarCrawlerSettings.type == 'imap': 
+    elif ambarCrawlerSettings.type == 'ftps': 
+        crawler = FtpCrawler(apiProxy, ambarCrawlerSettings)
+    elif ambarCrawlerSettings.type == 'imap': 
         crawler = ImapCrawler(apiProxy, ambarCrawlerSettings)
 
     try:
