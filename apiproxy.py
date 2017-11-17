@@ -7,10 +7,10 @@ class ApiProxy:
         self.apiCallTimeoutSeconds = ApiCallTimeoutSeconds
         self.headers = {'ambar-email': Name, 'ambar-email-token': ApiToken}
     
-    def CheckIfAmbarFileContentExists(self, Sha):
+    def CheckIfAmbarFileParsedContentExists(self, Sha):
         apiResp = RestApiResponse()
         try:
-            apiUri = '{0}/api/files/content/{1}'.format(self.apiUrl, Sha)
+            apiUri = '{0}/api/files/content/{1}/parsed'.format(self.apiUrl, Sha)
             req = requests.head(apiUri, headers=self.headers, timeout = self.apiCallTimeoutSeconds)
             apiResp.result = 'ok'
             apiResp.code = req.status_code            

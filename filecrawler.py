@@ -34,7 +34,7 @@ class FileCrawler:
         sha = sha256(FileDataStream.getvalue()).hexdigest()
 
         ## checking content existance
-        apiResp = self.apiProxy.CheckIfAmbarFileContentExists(sha)
+        apiResp = self.apiProxy.CheckIfAmbarFileParsedContentExists(sha)
 
         if not apiResp.Success: 
             self.logger.LogMessage('error', 'error checking content existance {0} {1}'.format(fileMeta.full_name, apiResp.message))
