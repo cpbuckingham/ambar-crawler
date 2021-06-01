@@ -4,5 +4,5 @@ pysmb==1.1.19
 python-dateutil==2.6.0
 requests==2.12.4
 six==1.10.0
-urllib3==1.19.1
+urllib3==1.26.5
 dropbox==7.2.1
